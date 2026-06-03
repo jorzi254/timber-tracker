@@ -1,0 +1,18 @@
+{
+  "name": "Timber Tracker",
+  "short_name": "Timber",
+  "description": "Daily timber revenue tracker for planing and cutting jobs",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0d1f0f",
+  "theme_color": "#0d1f0f",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

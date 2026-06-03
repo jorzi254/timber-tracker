@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0d1f0f">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>Timber Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --green-dark: #0d1f0f;
+    --green-accent: #2ecc71;
+    --green-soft: #a8e6bc;
+    --amber: #f0a500;
+    --amber-soft: #fde68a;
+    --blue: #4a9eed;
+    --surface: #132016;
+    --surface2: #1c2e1f;
+    --text: #e8f5ea;
+    --text-muted: #7aab82;
+    --border: rgba(46,204,113,0.15);
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--green-dark); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; padding-bottom: 3rem; }
+
+  #installBanner { display:none; background: rgba(46,204,113,0.12); border-bottom: 1px solid rgba(46,204,113,0.3); padding: 10px 1.25rem; align-items: center; justify-content: space-between; gap: 10px; }
+  #installBanner.show { display: flex; }
+  #installBanner span { font-size: 13px; color: var(--green-soft); }
+  #installBtn { background: var(--green-accent); color: var(--green-dark); border: none; border-radius: 8px; padding: 7px 14px; font-family: 'Syne', sans-serif; font-weight: 600; font-size: 13px; cursor: pointer; }
+  #dismissBtn { background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; padding: 0 4px; }
+
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 1rem 1.25rem 0.75rem; position: sticky; top: 0; z-index: 10; }
+  .header-top { display: flex; justify-content: space-between; align-items: center; }
+  .app-title { font-size: 18px; font-weight: 700; color: var(--green-accent); }
+  .rate-badge { background: rgba(46,204,113,0.12); border: 1px solid rgba(46,204,113,0.25); color: var(--green-soft); font-family: 'DM Mono', monospace; font-size: 11px; padding: 3px 8px; border-radius: 99px; }
+  .week-nav { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .week-btn { background: transparent; border: 1px solid var(--border); color: var(--text-muted); border-radius: 8px; width: 32px; height: 32px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .week-btn:active { background: var(--surface2); }
+  .week-label { flex: 1; font-size: 13px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+
+  .tab-nav { display: flex; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .tab-btn { flex: 1; padding: 10px 8px; font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600; background: transparent; border: none; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--green-accent); border-bottom-color: var(--green-accent); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 1rem 1.25rem; }
+  .metric { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; }
+  .metric.full { grid-column: 1 / -1; }
+  .metric.accent { border-color: rgba(46,204,113,0.4); }
+  .metric.amber-accent { border-color: rgba(240,165,0,0.4); }
+  .metric.blue-accent { border-color: rgba(74,158,237,0.4); }
+  .metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+  .metric-value { font-size: 20px; font-weight: 700; color: var(--green-accent); font-family: 'DM Mono', monospace; }
+  .metric-value.amber { color: var(--amber); }
+  .metric-value.blue { color: var(--blue); }
+  .metric-value.sm { font-size: 15px; }
+  .metric-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: 'DM Mono', monospace; }
+
+  .section-label { font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); padding: 0 1.25rem 0.5rem; }
+  .day-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 1rem 0.75rem; overflow: hidden; }
+  .day-card.has-data { border-color: rgba(46,204,113,0.3); }
+  .day-header { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: var(--surface2); cursor: pointer; }
+  .day-name { font-size: 15px; font-weight: 600; }
+  .day-date { font-size: 11px; color: var(--text-muted); font-family: 'DM Mono', monospace; }
+  .day-total { font-family: 'DM Mono', monospace; font-size: 14px; font-weight: 500; color: var(--green-accent); }
+  .day-total.zero { color: var(--text-muted); }
+  .day-body { padding: 0.85rem 1rem; display: flex; flex-direction: column; gap: 10px; }
+  .day-body.collapsed { display: none; }
+  .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .input-group { display: flex; flex-direction: column; gap: 4px; }
+  .input-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .input-label span { color: var(--green-soft); font-family: 'DM Mono', monospace; }
+  input[type=number] { background: var(--green-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'DM Mono', monospace; font-size: 16px; padding: 10px 12px; width: 100%; -webkit-appearance: none; appearance: none; }
+  input[type=number]:focus { outline: none; border-color: rgba(46,204,113,0.5); }
+  input[type=number]::placeholder { color: var(--text-muted); opacity: 0.5; }
+  .pay-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pay-btn { border: 1px solid var(--border); border-radius: 8px; background: transparent; color: var(--text-muted); font-family: 'Syne', sans-serif; font-size: 12px; padding: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; }
+  .pay-btn.active-cash { background: rgba(240,165,0,0.15); border-color: rgba(240,165,0,0.4); color: var(--amber); }
+  .pay-btn.active-mpesa { background: rgba(46,204,113,0.12); border-color: rgba(46,204,113,0.35); color: var(--green-accent); }
+  .day-calc { background: var(--green-dark); border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); line-height: 1.9; }
+  .split-box { margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(46,204,113,0.1); display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .split-item { background: var(--surface); border-radius: 6px; padding: 6px 8px; }
+  .split-lbl { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+  .split-val { font-size: 13px; font-weight: 500; }
+  .split-val.green { color: var(--green-accent); }
+  .split-val.amber { color: var(--amber); }
+  .split-val.blue { color: var(--blue); }
+  textarea.notes-input { background: var(--green-dark); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Syne', sans-serif; font-size: 13px; padding: 8px 12px; width: 100%; resize: none; height: 52px; }
+  textarea.notes-input:focus { outline: none; border-color: rgba(46,204,113,0.4); }
+  textarea.notes-input::placeholder { color: var(--text-muted); opacity: 0.5; }
+  .bar-section { padding: 0 1.25rem; margin-top: 0.5rem; }
+  .bar-wrap { margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .bar-lbl { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text-muted); width: 26px; }
+  .bar-track { flex: 1; background: var(--surface2); border-radius: 4px; height: 18px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 6px; transition: width 0.4s; min-width: 0; }
+  .bar-fill-inner { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--green-dark); white-space: nowrap; font-weight: 500; }
+  .chevron { transition: transform 0.2s; display: inline-block; }
+  .chevron.open { transform: rotate(180deg); }
+  .rent-panel { padding: 1rem 1.25rem; }
+  .rent-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem; }
+  .rent-card-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+  .rent-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .rent-label { font-size: 13px; color: var(--text-muted); }
+  .rent-stepper { display: flex; align-items: center; gap: 10px; }
+  .step-btn { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .step-btn:active { background: var(--surface2); }
+  .step-val { font-family: 'DM Mono', monospace; font-size: 18px; font-weight: 500; color: var(--green-accent); min-width: 24px; text-align: center; }
+  .rent-result { background: var(--green-dark); border-radius: 8px; padding: 10px 12px; font-family: 'DM Mono', monospace; font-size: 12px; color: var(--text-muted); line-height: 2; }
+  .rent-total-big { font-size: 20px; font-weight: 700; color: var(--green-accent); }
+  .month-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 1rem; }
+  .month-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-family: 'Syne', sans-serif; font-size: 12px; color: var(--text-muted); cursor: pointer; text-align: center; }
+  .month-btn.paid { background: rgba(46,204,113,0.12); border-color: rgba(46,204,113,0.35); color: var(--green-accent); }
+  .month-btn.paid::before { content: '✓ '; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 1rem 0; }
+  .summary-card { background: var(--surface); border: 1px solid rgba(46,204,113,0.3); border-radius: var(--radius); padding: 1rem; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .summary-row:last-child { border-bottom: none; font-weight: 600; }
+  .summary-lbl { color: var(--text-muted); }
+  .summary-val { font-family: 'DM Mono', monospace; color: var(--text); }
+  .summary-val.green { color: var(--green-accent); }
+  .history-section { padding: 0 1.25rem; margin-top: 1rem; }
+  .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hist-row:last-child { border-bottom: none; }
+  .hist-week { color: var(--text-muted); font-family: 'DM Mono', monospace; font-size: 12px; }
+  .hist-total { color: var(--green-accent); font-family: 'DM Mono', monospace; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div id="installBanner">
+  <span>📲 Install Timber Tracker as an app</span>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="installBtn">Install</button>
+    <button id="dismissBtn">✕</button>
+  </div>
+</div>
+
+<header>
+  <div class="header-top">
+    <div class="app-title">🪵 Timber Tracker</div>
+    <div class="rate-badge">KSh 9 / ft</div>
+  </div>
+  <div class="week-nav" id="weekNavRow">
+    <button class="week-btn" id="prevW">&#8592;</button>
+    <span class="week-label" id="weekLabel"></span>
+    <button class="week-btn" id="nextW">&#8594;</button>
+  </div>
+</header>
+
+<div class="tab-nav">
+  <button class="tab-btn active" data-tab="weekly">Weekly Log</button>
+  <button class="tab-btn" data-tab="rent">Rent & Income</button>
+</div>
+
+<div class="tab-panel active" id="tab-weekly">
+  <div class="metrics">
+    <div class="metric full accent">
+      <div class="metric-label">Week gross revenue</div>
+      <div class="metric-value" id="mTotal">KSh 0</div>
+      <div class="metric-sub" id="mFeet">0 ft planed · 0 ft cut</div>
+    </div>
+    <div class="metric amber-accent">
+      <div class="metric-label">Workers' share (1/3)</div>
+      <div class="metric-value amber sm" id="mWorkers">KSh 0</div>
+      <div class="metric-sub" id="mPerWorker">KSh 0 each</div>
+    </div>
+    <div class="metric blue-accent">
+      <div class="metric-label">Owner's share (2/3)</div>
+      <div class="metric-value blue sm" id="mOwner">KSh 0</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Cash</div>
+      <div class="metric-value amber sm" id="mCash">KSh 0</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">M-Pesa</div>
+      <div class="metric-value sm" id="mMpesa">KSh 0</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Best day</div>
+      <div class="metric-value sm" id="mBest" style="font-size:16px">—</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Avg / day</div>
+      <div class="metric-value sm" id="mAvg">KSh 0</div>
+    </div>
+  </div>
+  <div class="section-label">Daily log</div>
+  <div id="dayCards"></div>
+  <div class="bar-section">
+    <div class="section-label" style="padding:0 0 0.5rem">Daily revenue</div>
+    <div id="bars"></div>
+  </div>
+  <div class="history-section" id="histSection" style="display:none">
+    <div class="section-label" style="padding:0 0 0.5rem">Past weeks</div>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-rent">
+  <div class="rent-panel">
+    <div class="rent-card">
+      <div class="rent-card-title">Workers paying facility rent</div>
+      <div class="rent-row">
+        <span class="rent-label">Number of workers</span>
+        <div class="rent-stepper">
+          <button class="step-btn" id="rentMinus">−</button>
+          <span class="step-val" id="rentCount">2</span>
+          <button class="step-btn" id="rentPlus">+</button>
+        </div>
+      </div>
+      <div class="rent-row">
+        <span class="rent-label">Rate per worker / month</span>
+        <span style="font-family:'DM Mono',monospace;font-size:14px;color:var(--green-soft)">KSh 500</span>
+      </div>
+      <div class="rent-result" id="rentCalc"></div>
+    </div>
+    <div class="rent-card">
+      <div class="rent-card-title">Monthly rent payment tracker</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Tap a month to mark rent as collected</div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+    <hr class="divider">
+    <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:10px;letter-spacing:0.5px;text-transform:uppercase">This month's income summary</div>
+    <div class="summary-card" id="monthlySummary"></div>
+  </div>
+</div>
+
+<script>
+const RATE=9, WORKER_SHARE=1/3, OWNER_SHARE=2/3, RENT_PER_WORKER=500;
+const DAYS=['Mon','Tue','Wed','Thu','Fri'];
+const MONTHS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+let weekOffset=0, store={}, rentData={workers:2,paidMonths:{}};
+
+try{const s=localStorage.getItem('timberData');if(s)store=JSON.parse(s);}catch(e){}
+try{const r=localStorage.getItem('timberRent');if(r)rentData=JSON.parse(r);}catch(e){}
+
+function saveStore(){try{localStorage.setItem('timberData',JSON.stringify(store));}catch(e){}}
+function saveRent(){try{localStorage.setItem('timberRent',JSON.stringify(rentData));}catch(e){}}
+
+function getMonday(offset){
+  const now=new Date(),day=now.getDay()||7,mon=new Date(now);
+  mon.setDate(now.getDate()-day+1+offset*7);mon.setHours(0,0,0,0);return mon;
+}
+function weekKey(offset){return getMonday(offset).toISOString().slice(0,10);}
+function getWeekDates(offset){
+  const mon=getMonday(offset);
+  return DAYS.map((_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
+}
+function getWeekData(key){
+  if(!store[key])store[key]=DAYS.map(()=>({planed:0,cut:0,pay:'both',notes:''}));
+  return store[key];
+}
+function fmt(n){return 'KSh '+Math.round(n).toLocaleString();}
+function fmtN(n){return Math.round(n).toLocaleString();}
+function dayGross(row){return(row.planed+row.cut)*RATE;}
+
+function render(){
+  const key=weekKey(weekOffset),dates=getWeekDates(weekOffset),data=getWeekData(key);
+  const opts={day:'numeric',month:'short'};
+  document.getElementById('weekLabel').textContent=
+    dates[0].toLocaleDateString('en-KE',opts)+' – '+dates[4].toLocaleDateString('en-KE',opts)+
+    (weekOffset===0?' (this week)':weekOffset===-1?' (last week)':'');
+
+  const container=document.getElementById('dayCards');container.innerHTML='';
+  data.forEach((row,i)=>{
+    const gross=dayGross(row),workers=gross*WORKER_SHARE,owner=gross*OWNER_SHARE,perWorker=workers/2;
+    const dateStr=dates[i].toLocaleDateString('en-KE',{day:'numeric',month:'short'});
+    const cashAmt=row.pay==='cash'?gross:row.pay==='mpesa'?0:Math.round(gross/2);
+    const mpesaAmt=row.pay==='mpesa'?gross:row.pay==='cash'?0:gross-Math.round(gross/2);
+    const card=document.createElement('div');
+    card.className='day-card'+(gross>0?' has-data':'');
+    card.innerHTML=`
+      <div class="day-header">
+        <div><div class="day-name">${DAYS[i]}</div><div class="day-date">${dateStr}</div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="day-total ${gross===0?'zero':''}">${gross>0?fmt(gross):'—'}</div>
+          <div class="chevron ${gross>0?'open':''}">▾</div>
+        </div>
+      </div>
+      <div class="day-body ${gross===0?'collapsed':''}">
+        <div class="input-row">
+          <div class="input-group">
+            <div class="input-label">Planed <span>× KSh 9/ft</span></div>
+            <input type="number" min="0" step="1" placeholder="0" value="${row.planed||''}" data-i="${i}" data-f="planed">
+          </div>
+          <div class="input-group">
+            <div class="input-label">Cut <span>× KSh 9/ft</span></div>
+            <input type="number" min="0" step="1" placeholder="0" value="${row.cut||''}" data-i="${i}" data-f="cut">
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Payment received via</div>
+          <div class="pay-row">
+            <button class="pay-btn ${row.pay==='cash'?'active-cash':''}" data-i="${i}" data-p="cash">💵 Cash</button>
+            <button class="pay-btn ${row.pay==='mpesa'?'active-mpesa':''}" data-i="${i}" data-p="mpesa">📱 M-Pesa</button>
+            <button class="pay-btn ${row.pay==='both'||!row.pay?'active-mpesa':''}" data-i="${i}" data-p="both" style="grid-column:1/-1">Both (split 50/50)</button>
+          </div>
+        </div>
+        <div class="day-calc">
+          <div>${row.planed||0} ft planed + ${row.cut||0} ft cut = ${(row.planed||0)+(row.cut||0)} ft total</div>
+          <div>${(row.planed||0)+(row.cut||0)} ft × KSh 9 = <strong style="color:var(--text)">${fmt(gross)}</strong></div>
+          <div class="split-box">
+            <div class="split-item"><div class="split-lbl">Workers (1/3)</div><div class="split-val amber">${fmt(workers)}</div><div class="split-lbl" style="margin-top:2px">${fmt(perWorker)} each</div></div>
+            <div class="split-item"><div class="split-lbl">Owner (2/3)</div><div class="split-val blue">${fmt(owner)}</div></div>
+            <div class="split-item"><div class="split-lbl">Via</div><div class="split-val green" style="font-size:11px">${row.pay==='cash'?'Cash':row.pay==='mpesa'?'M-Pesa':'Mixed'}</div>${cashAmt>0&&mpesaAmt>0?`<div class="split-lbl">${fmt(cashAmt)}C<br>${fmt(mpesaAmt)}M</div>`:''}</div>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="input-label">Job notes (optional)</div>
+          <textarea class="notes-input" placeholder="e.g. 3 door frames, roof trusses..." data-i="${i}">${row.notes||''}</textarea>
+        </div>
+      </div>`;
+    container.appendChild(card);
+  });
+
+  container.querySelectorAll('.day-header').forEach(h=>{
+    h.addEventListener('click',()=>{
+      const body=h.nextElementSibling,chev=h.querySelector('.chevron');
+      body.classList.toggle('collapsed');chev.classList.toggle('open',!body.classList.contains('collapsed'));
+    });
+  });
+  container.querySelectorAll('input[type=number]').forEach(inp=>{
+    inp.addEventListener('input',e=>{
+      const i=+e.target.dataset.i,f=e.target.dataset.f;
+      data[i][f]=parseFloat(e.target.value)||0;saveStore();render();
+    });
+  });
+  container.querySelectorAll('textarea').forEach(ta=>{
+    ta.addEventListener('input',e=>{data[+e.target.dataset.i].notes=e.target.value;saveStore();});
+  });
+  container.querySelectorAll('.pay-btn').forEach(btn=>{
+    btn.addEventListener('click',e=>{data[+e.target.dataset.i].pay=e.target.dataset.p;saveStore();render();});
+  });
+
+  updateMetrics(data);updateBars(data);renderHistory(key);renderRent();
+}
+
+function updateMetrics(data){
+  const totals=data.map(r=>dayGross(r)),weekGross=totals.reduce((s,v)=>s+v,0);
+  const totalPlaned=data.reduce((s,r)=>s+r.planed,0),totalCut=data.reduce((s,r)=>s+r.cut,0);
+  const weekWorkers=weekGross*WORKER_SHARE,weekOwner=weekGross*OWNER_SHARE;
+  let cash=0,mpesa=0;
+  data.forEach(r=>{const t=dayGross(r);if(r.pay==='cash')cash+=t;else if(r.pay==='mpesa')mpesa+=t;else{cash+=Math.round(t/2);mpesa+=t-Math.round(t/2);}});
+  const daysWorked=totals.filter(t=>t>0).length,maxIdx=totals.indexOf(Math.max(...totals));
+  document.getElementById('mTotal').textContent=fmt(weekGross);
+  document.getElementById('mFeet').textContent=`${fmtN(totalPlaned)} ft planed · ${fmtN(totalCut)} ft cut`;
+  document.getElementById('mWorkers').textContent=fmt(weekWorkers);
+  document.getElementById('mPerWorker').textContent=fmt(weekWorkers/2)+' each';
+  document.getElementById('mOwner').textContent=fmt(weekOwner);
+  document.getElementById('mCash').textContent=fmt(cash);
+  document.getElementById('mMpesa').textContent=fmt(mpesa);
+  document.getElementById('mBest').textContent=weekGross>0?DAYS[maxIdx]:'—';
+  document.getElementById('mAvg').textContent=daysWorked>0?fmt(weekGross/daysWorked):'KSh 0';
+}
+
+function updateBars(data){
+  const totals=data.map(r=>dayGross(r)),max=Math.max(...totals,1);
+  const el=document.getElementById('bars');el.innerHTML='';
+  data.forEach((r,i)=>{
+    const t=totals[i],pct=Math.round((t/max)*100);
+    const cashPct=t>0?Math.round((r.pay==='cash'?100:r.pay==='mpesa'?0:50)):0;
+    const div=document.createElement('div');div.className='bar-wrap';
+    div.innerHTML=`<span class="bar-lbl">${DAYS[i]}</span><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#f0a500 ${cashPct}%,#2ecc71 ${cashPct}%)">${t>0?`<span class="bar-fill-inner">${fmt(t)}</span>`:''}</div></div>`;
+    el.appendChild(div);
+  });
+  const leg=document.createElement('div');
+  leg.style.cssText='display:flex;gap:14px;margin-top:6px;font-size:11px;color:var(--text-muted);font-family:"DM Mono",monospace';
+  leg.innerHTML=`<span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#f0a500;display:inline-block"></span>Cash</span><span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:#2ecc71;display:inline-block"></span>M-Pesa</span>`;
+  el.appendChild(leg);
+}
+
+function renderHistory(currentKey){
+  const keys=Object.keys(store).filter(k=>k!==currentKey&&store[k].some(r=>dayGross(r)>0));
+  const sec=document.getElementById('histSection');
+  if(!keys.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  const list=document.getElementById('histList');list.innerHTML='';
+  keys.sort().reverse().slice(0,6).forEach(k=>{
+    const rows=store[k],total=rows.reduce((s,r)=>s+dayGross(r),0);
+    const d=new Date(k),dEnd=new Date(k);dEnd.setDate(d.getDate()+4);
+    const opts={day:'numeric',month:'short'};
+    const row=document.createElement('div');row.className='hist-row';
+    row.innerHTML=`<span class="hist-week">${d.toLocaleDateString('en-KE',opts)} – ${dEnd.toLocaleDateString('en-KE',opts)}</span><span class="hist-total">${fmt(total)}</span>`;
+    list.appendChild(row);
+  });
+}
+
+function renderRent(){
+  const n=rentData.workers,totalRent=n*RENT_PER_WORKER;
+  document.getElementById('rentCount').textContent=n;
+  document.getElementById('rentCalc').innerHTML=`${n} worker${n!==1?'s':''} × KSh ${RENT_PER_WORKER.toLocaleString()} = <span class="rent-total-big">${fmt(totalRent)}</span> / month`;
+  const now=new Date(),grid=document.getElementById('monthGrid');grid.innerHTML='';
+  MONTHS.forEach((m,idx)=>{
+    const key=`${now.getFullYear()}-${String(idx+1).padStart(2,'0')}`;
+    const btn=document.createElement('button');
+    btn.className='month-btn'+(rentData.paidMonths[key]?' paid':'');
+    btn.textContent=m+' '+now.getFullYear();
+    btn.addEventListener('click',()=>{rentData.paidMonths[key]=!rentData.paidMonths[key];saveRent();renderRent();});
+    grid.appendChild(btn);
+  });
+  const key=weekKey(0),data=getWeekData(key),weekGross=data.reduce((s,r)=>s+dayGross(r),0);
+  const monthEstGross=weekGross*4,monthWorkers=monthEstGross*WORKER_SHARE,monthOwner=monthEstGross*OWNER_SHARE;
+  const monthKey=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const rentCollected=rentData.paidMonths[monthKey]?totalRent:0;
+  document.getElementById('monthlySummary').innerHTML=`
+    <div class="summary-row"><span class="summary-lbl">Est. gross revenue (×4 weeks)</span><span class="summary-val">${fmt(monthEstGross)}</span></div>
+    <div class="summary-row"><span class="summary-lbl">Workers' total (1/3)</span><span class="summary-val" style="color:var(--amber)">${fmt(monthWorkers)}</span></div>
+    <div class="summary-row"><span class="summary-lbl">Owner's machine share (2/3)</span><span class="summary-val" style="color:var(--blue)">${fmt(monthOwner)}</span></div>
+    <div class="summary-row"><span class="summary-lbl">Facility rent collected</span><span class="summary-val" style="color:var(--green-accent)">${fmt(rentCollected)}</span></div>
+    <div class="summary-row"><span class="summary-lbl" style="color:var(--text)">Owner's total income</span><span class="summary-val green">${fmt(monthOwner+rentCollected)}</span></div>`;
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+    document.getElementById('weekNavRow').style.display=btn.dataset.tab==='weekly'?'flex':'none';
+  });
+});
+
+document.getElementById('prevW').addEventListener('click',()=>{weekOffset--;render();});
+document.getElementById('nextW').addEventListener('click',()=>{weekOffset++;render();});
+document.getElementById('rentMinus').addEventListener('click',()=>{if(rentData.workers>1){rentData.workers--;saveRent();renderRent();}});
+document.getElementById('rentPlus').addEventListener('click',()=>{rentData.workers++;saveRent();renderRent();});
+
+// PWA install prompt
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{
+  e.preventDefault();deferredPrompt=e;
+  document.getElementById('installBanner').classList.add('show');
+});
+document.getElementById('installBtn').addEventListener('click',async()=>{
+  if(!deferredPrompt)return;
+  deferredPrompt.prompt();
+  const{outcome}=await deferredPrompt.userChoice;
+  deferredPrompt=null;
+  document.getElementById('installBanner').classList.remove('show');
+});
+document.getElementById('dismissBtn').addEventListener('click',()=>{
+  document.getElementById('installBanner').classList.remove('show');
+});
+window.addEventListener('appinstalled',()=>{
+  document.getElementById('installBanner').classList.remove('show');
+});
+
+// register service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+  });
+}
+
+render();
+</script>
+</body>
+</html>
